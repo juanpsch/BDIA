@@ -1,0 +1,334 @@
+1. Realizar una consulta que devuelva la siguiente información: Región y cantidad 
+total de productos vendidos a clientes de esa Región.
+
+db.facturas.aggregate( [   
+	{$unwind: { path: "$item" }},
+	{$group:
+       {
+         _id: "$cliente.region",
+         cantidad: { $sum: "$item.cantidad" }
+       }
+	},  
+	{$sort: { "cantidad": -1 }}
+]
+)
+
+
+
+2. Basado en la consulta del punto 1, mostrar sólo la región que tenga el menor ingreso.
+
+db.facturas.aggregate( [   
+	{$unwind: { path: "$item" }},
+	{$group:
+       {
+         _id: "$cliente.region",
+         cantidad: { $sum: "$item.cantidad" },
+		 ingreso: {$sum: {$multiply:["$item.cantidad", "$item.precio"]}}	
+       }
+	},
+	{$sort: { "ingreso": 1 }},
+	{$limit:1}
+]
+)
+
+
+
+3. Basado en la consulta del punto 1, mostrar sólo las regiones que tengan una 
+cantidad de productos vendidos superior a 10000
+
+db.facturas.aggregate( [   
+	{$unwind: { path: "$item" }},
+	{$group:
+       {
+         _id: "$cliente.region",
+         cantidad: { $sum: "$item.cantidad" }
+       }
+	},
+	{$match: {"cantidad": {$gt: 10000}}},
+	{$sort: { "cantidad": -1 }}
+]
+)
+
+
+4. Se requiere obtener un reporte que contenga la siguiente información, nro. cuit, 
+apellido y nombre y región y cantidad de facturas, ordenado por apellido
+
+
+
+db.facturas.aggregate( [   
+	
+	{$group:
+       {
+         _id: {					
+					cuit:"$cliente.cuit",
+          apellido:"$cliente.apellido",
+          nombre:"$cliente.nombre",
+          region:"$cliente.region"
+         },		
+         cantidadFacturas: { $sum: 1 }
+       }
+	},
+	
+	{$sort:{"_id.apellido":1}}
+]
+)
+
+
+
+
+5. Basados en la consulta del punto 4 informar sólo los clientes con número de 
+CUIT mayor a 2700000000
+
+
+
+db.facturas.aggregate( [   
+	
+	{$group:
+       {
+         _id: {					
+		  cuit:"$cliente.cuit",
+          apellido:"$cliente.apellido",
+          nombre:"$cliente.nombre",
+          region:"$cliente.region"
+         },		
+         cantidadFacturas: { $sum: 1 }
+       }
+	},
+	{$match: {"_id.cuit": {$gt: 2700000000}}},
+	{$sort:{"_id.apellido":1}}
+]
+)
+
+
+6. Basados en la consulta del punto 5 informar solamente la cantidad de clientes 
+que cumplen con esta condición.
+
+
+db.facturas.aggregate( [   
+	
+	{$group:
+       {
+         _id: {					
+		  cuit:"$cliente.cuit",
+          apellido:"$cliente.apellido",
+          nombre:"$cliente.nombre",
+          region:"$cliente.region"
+         },		
+         cantidadFacturas: { $sum: 1 }
+       }
+	},
+	{$match: {"_id.cuit": {$gt: 2700000000}}},
+	{$sort:{"_id.apellido":1}},
+	{"$group" : {_id:null, count:{$sum:1}}}
+]
+)
+
+
+7. Se requiere realizar una consulta que devuelva la siguiente información: producto 
+y cantidad de facturas en las que lo compraron, ordenado por cantidad de facturas 
+descendente
+
+
+
+
+db.facturas.aggregate( [   
+	{$unwind: { path: "$item" }},
+	{$group:
+       {
+         _id: "$item.producto",
+         facturas: { $sum: 1 }
+       }
+	},  
+	{$sort: { "facturas": -1 }}
+]
+)
+
+
+
+8. Obtener la cantidad total comprada así como también los ingresos totales para cada 
+producto.
+
+
+db.facturas.aggregate( [   
+	{$unwind: { path: "$item" }},
+	{$group:
+       {
+         _id: "$item.producto",
+         cantidad: { $sum: "$item.cantidad" },
+		 ingreso: {$sum: {$multiply:["$item.cantidad", "$item.precio"]}}
+       }
+	},  
+	{$sort: { "cantidad": -1 }}
+]
+)
+
+
+
+9. Idem el punto anterior, ordenar por ingresos en forma ascendente, saltear el 1ro 
+y mostrar 2do y 3ro.
+
+
+
+db.facturas.aggregate( [   
+	{$unwind: { path: "$item" }},
+	{$group:
+       {
+         _id: "$item.producto",
+         cantidad: { $sum: "$item.cantidad" },
+		 ingreso: {$sum: {$multiply:["$item.cantidad", "$item.precio"]}}
+       }
+	},  
+	{$sort: { "ingreso": 1 }},
+  {$skip:1},
+  {$limit:2}
+]
+)
+
+10. Obtener todos productos junto con un array de las personas que lo compraron. En 
+este array deberá haber solo strings con el nombre completo de la persona. Los 
+documentos entregados como resultado deberán tener la siguiente forma:
+{producto: “<nombre>”, personas:[“…”, …]}
+
+
+db.facturas.aggregate( [   
+
+{$unwind: { path: "$item" }},
+{$project: {_id:0, producto:"$item.producto",personas:{"$cliente.nombre}}}
+]
+)
+
+
+
+1-
+
+db.movies.aggregate([
+    {"$group" : {_id:"$year", count:{$sum:1}}}
+])
+
+
+2-
+
+
+db.movies.aggregate( [   
+   {
+     $unwind: { path: "$genres", preserveNullAndEmptyArrays: false }
+   },
+   {
+     $group:
+       {
+         _id: "$genres",
+         averageRating: { $avg: "$tomatoes.viewer.rating" }
+       }
+   },  
+   {
+     $sort: { "averageRating": -1 }
+   }
+] )
+
+3-
+
+db.movies.aggregate( [
+      {
+				$sort: { "tomatoes.viewer.rating": -1}				           
+      },
+  {$limit:5},
+  {$project: {"title":1,rating:"$tomatoes.viewer.rating"}}
+] )
+
+4-
+
+db.movies.aggregate( [   
+   {
+     $unwind: { path: "$directors", preserveNullAndEmptyArrays: false }
+   },
+   {
+     $group:
+       {
+         _id: "$directors",
+         averageRating: { $avg: "$runtime" },
+         totalPelis: {$sum:1}
+       }
+   },  
+   {
+     $sort: { "totalPelis": -1 }
+   }
+] )
+
+5-
+
+db.movies.aggregate([
+    {"$group" : {_id:"$rated", count:{$sum:1}}}
+])
+
+6-
+
+db.movies.aggregate( [   
+   {
+     $unwind: { path: "$countries", preserveNullAndEmptyArrays: false }
+   },
+   {
+     $group:
+       {
+         _id: "$countries",         
+         totalPelis: {$sum:1}
+       }
+   },  
+   {
+     $sort: { "totalPelis": -1 }
+   },
+		{$limit:5}
+] )
+
+7-
+
+db.movies.aggregate([
+	{$match: {"year": {$gt: 2000}}},
+	{$unwind: { path: "$cast", preserveNullAndEmptyArrays: false }},
+    {$group: {_id:"$title", count:{$sum:1}}},    
+    {$group: {"_id": null, "PromedioCastNumber": { "$avg": "$count" } 
+  } 
+}
+])
+
+8-
+
+db.movies.aggregate( [  
+   {
+     $group:
+       {
+         _id: null,
+				 CalificacionPromedio:{$avg:"$imdb.rating"},				
+         totalComments: {$sum:"$imdb.votes"}
+       }
+   },  
+  
+] )
+
+9-
+
+db.comments.aggregate( [  
+   {
+     $group:
+       {
+         Usuario: "$name",				 				
+         PelisComentadas: {$sum:1}
+       }
+   }
+  ])
+  
+  10-
+  
+db.comments.aggregate( [  
+	{$match: {"date": {$lt: ISODate("2020-01-01T00:00:00Z")}}},
+	{$lookup:
+		{
+			from: "movies",
+			localField: "movie_id",
+			foreignField: "_id",
+			as: "peli"
+		}
+	},
+	{$unwind:"$peli"},
+	{$match: {"peli.genres": {$in: ["Western"]}}},
+	{$project: {_id:0, peli:"$peli.title",generos:"$peli.genres",comentario:"$text",fecha:"$date"}}
+	])

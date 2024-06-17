@@ -1,0 +1,133 @@
+1-
+
+db.movies.aggregate([
+    {"$group" : {_id:"$year", count:{$sum:1}}}
+])
+
+
+2-
+
+
+db.movies.aggregate( [   
+   {
+     $unwind: { path: "$genres", preserveNullAndEmptyArrays: false }
+   },
+   {
+     $group:
+       {
+         _id: "$genres",
+         averageRating: { $avg: "$tomatoes.viewer.rating" }
+       }
+   },  
+   {
+     $sort: { "averageRating": -1 }
+   }
+] )
+
+3-
+
+db.movies.aggregate( [
+      {
+				$sort: { "tomatoes.viewer.rating": -1}				           
+      },
+  {$limit:5},
+  {$project: {"title":1,rating:"$tomatoes.viewer.rating"}}
+] )
+
+4-
+
+db.movies.aggregate( [   
+   {
+     $unwind: { path: "$directors", preserveNullAndEmptyArrays: false }
+   },
+   {
+     $group:
+       {
+         _id: "$directors",
+         averageRating: { $avg: "$runtime" },
+         totalPelis: {$sum:1}
+       }
+   },  
+   {
+     $sort: { "totalPelis": -1 }
+   }
+] )
+
+5-
+
+db.movies.aggregate([
+    {"$group" : {_id:"$rated", count:{$sum:1}}}
+])
+
+6-
+
+db.movies.aggregate( [   
+   {
+     $unwind: { path: "$countries", preserveNullAndEmptyArrays: false }
+   },
+   {
+     $group:
+       {
+         _id: "$countries",         
+         totalPelis: {$sum:1}
+       }
+   },  
+   {
+     $sort: { "totalPelis": -1 }
+   },
+		{$limit:5}
+] )
+
+7-
+
+db.movies.aggregate([
+	{$match: {"year": {$gt: 2000}}},
+	{$unwind: { path: "$cast", preserveNullAndEmptyArrays: false }},
+    {$group: {_id:"$title", count:{$sum:1}}},    
+    {$group: {"_id": null, "PromedioCastNumber": { "$avg": "$count" } 
+  } 
+}
+])
+
+8-
+
+db.movies.aggregate( [  
+   {
+     $group:
+       {
+         _id: null,
+				 CalificacionPromedio:{$avg:"$imdb.rating"},				
+         totalComments: {$sum:"$imdb.votes"}
+       }
+   },  
+  
+] )
+
+9-
+
+db.comments.aggregate( [  
+   {
+     $group:
+       {
+         Usuario: "$name",				 				
+         PelisComentadas: {$sum:1}
+       }
+   }
+  ])
+  
+  10-
+  
+db.comments.aggregate( [  
+	{$match: {"date": {$lt: ISODate("2020-01-01T00:00:00Z")}}},
+	{$lookup:
+		{
+			from: "movies",
+			localField: "movie_id",
+			foreignField: "_id",
+			as: "peli"
+		}
+	},
+	{$unwind:"$peli"},
+	{$match: {"peli.genres": {$in: ["Western"]}}},
+	{$project: {_id:0, peli:"$peli.title",generos:"$peli.genres",comentario:"$text",fecha:"$date"}}
+	])
